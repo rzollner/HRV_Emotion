@@ -60,3 +60,22 @@ final_correlation_df<- final_correlation_df[,c(1,2,4,3)]
 
 # Save the final_correlation_df to an Excel file
 write_xlsx(final_correlation_df, "correlation_table_long_format.xlsx")
+
+
+# PLOTTING
+
+
+  ggplot(final_correlation_df, aes(x = HRV_Measure, y = Emotion, fill = Correlation)) +
+    geom_tile() +
+    facet_wrap(~ Time_rel) +
+    scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0, limit = c(-1, 1), space = "Lab", name = "Correlation") +
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1),
+      strip.background = element_blank(),
+      strip.text = element_text(face = "bold")
+    ) +
+    labs(title = "Correlation Between Emotions and HRV Measures Across Timepoints",
+        x = "HRV Measure",
+        y = "Emotion")
+  ggsave("correlation_heatmap.png", width = 10, height = 8)
