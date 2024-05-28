@@ -3,10 +3,12 @@ setwd("D:/HEMS/ROSINA")
 library(readxl)
 library(writexl)
 library(dplyr)
+library(tidyverse)
 # load data
 HRV_Emotion_data <- read_excel("HRV_Emotion_data.xlsx")
 # remove all rows that have NA values in any column
 data = na.omit(HRV_Emotion_data) 
+
 
 # Specify the columns representing emotions and HRV measures
 emotion_columns <- c(19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34)
@@ -19,7 +21,7 @@ correlation_list <- list()
 # Calculate correlations for each timepoint
 for (time in timepoints) {
   # Filter data for the current timepoint
-  data_time <- data[data$Time_rel == time, ]
+  data_time <- data %>% filter(Time_rel == time)
   
   # Initialize a matrix to store correlation results for this timepoint
   correlation_matrix <- matrix(nrow = length(emotion_columns), ncol = length(hrv_columns))
@@ -34,16 +36,27 @@ for (time in timepoints) {
     }
   }
   
-  # Convert matrix to data frame for better readability
+  # Convert matrix to data frame
   correlation_df <- as.data.frame(correlation_matrix)
-  correlation_df$Time_rel <- time
+  
+  # Add row names as a column
+  correlation_df <- correlation_df %>%
+    rownames_to_column(var = "Emotion")
+  
+  # Reshape to long format
+  correlation_long_df <- correlation_df %>%
+    pivot_longer(cols = starts_with("HR"), names_to = "HRV_Measure", values_to = "Correlation") %>%
+    mutate(Time_rel = time)
   
   # Append to the list
-  correlation_list[[time+1]] <- correlation_df
+  correlation_list[[time+1]] <- correlation_long_df
 }
 
 # Combine all data frames into one
-final_correlation_df <- bind_rows(correlation_list, .id = "Time_rel")
+final_correlation_df <- bind_rows(correlation_list)
+
+#change order of the columns
+final_correlation_df<- final_correlation_df[,c(1,2,4,3)]
 
 # Save the final_correlation_df to an Excel file
-write_xlsx(final_correlation_df, "correlation_table_by_timepoints.xlsx")
+write_xlsx(final_correlation_df, "correlation_table_long_format.xlsx")
