@@ -1,0 +1,73 @@
+#correlation Emotion HRV at within person level
+
+# load necessary libraries
+library(readxl)
+library(writexl)
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+
+# set working directory and clear workspace
+rm(list=ls())
+setwd("D:/HEMS/ROSINA/Work")
+
+# load data
+HRV_Emotion_data <- read_excel("HRV_Emotion_data.xlsx")
+
+# remove all rows that have NA values in any column
+data = na.omit(HRV_Emotion_data) 
+
+# Specify the columns representing emotions and HRV measures
+emotion_columns <- c(19:34)
+hrv_columns <- c(8:18)
+timepoints <- unique(data$Time_rel)
+participants <- c(1, 3, 4, 5, 6, 7, 8)
+
+# initialize dataframe
+correlation_df <- data.frame(matrix(ncol = 5, nrow = length(emotion_columns)*length(participants)*length(hrv_columns)*length(timepoints)))
+
+# provide column names
+colnames(correlation_df) <- c('Participant', 'Time', 'Emotion', 'HRV', 'Correlation')
+m=1 # counter
+
+# create long format of data 
+for (i in 1:length(participants)){
+  data_sub1 = subset(data, data$Participant == participants[i])
+  for (j in 1:length(timepoints)){
+    data_sub2 = subset(data_sub1, data_sub1$Time_rel == timepoints[j])
+    for (k in 1:length(emotion_columns)){
+      for (l in 1:length(hrv_columns)){
+        correlation_df$Participant[m]=i
+        correlation_df$Time[m]=timepoints[j]
+        correlation_df$Emotion[m] = colnames(data_sub2[emotion_columns[k]])
+        correlation_df$HRV[m] = colnames(data_sub2[hrv_columns[l]])
+        correlation_df$Correlation[m] = cor(data_sub2[[emotion_columns[k]]], data_sub2[[hrv_columns[l]]])
+        m=m+1
+        
+      }
+    }
+  }
+}
+
+# plot data in heatmaps for all participants individually
+
+for (i in 1:length(participants)) {
+  cor_sub <- subset(correlation_df, Participant == i)
+  
+  p <- ggplot(cor_sub, aes(x = HRV, y = Emotion, fill = Correlation)) +
+    geom_tile() +
+    scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0, limit = c(-1, 1), space = "Lab", name = "Correlation") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+    labs(
+      title = paste("Participant", participants[i], ": Correlation Between Emotions and HRV Measures at Different Timepoints"),
+      x = "HRV Measure",
+      y = "Emotion"
+    ) +
+    facet_wrap(~ Time, ncol = 3)  # Adjust ncol as needed
+    
+    # Save the plot
+    ggsave(paste("Ptcp",participants[i],"_CorHRVEmotion.png", sep = ""), plot = p, width = 10, height = 8)
+  }
+
+
