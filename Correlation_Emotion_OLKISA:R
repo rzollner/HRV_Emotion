@@ -13,50 +13,60 @@ HRV_Emotion_data <- read_excel("HRV_Emotion_data.xlsx")
 # remove all rows that have NA values in any column
 data = na.omit(HRV_Emotion_data) 
 emotion_columns <- c(19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34)
-correlation_matrix <- matrix(nrow = length(emotion_columns), ncol = 1)
-rownames(correlation_matrix) <-c("pa_calm1", "pa_calm2", "pa_lively1", "pa_lively2", "na_nervous1", "na_nervous2", "na_weakend1", "na_weakened2", "na_stress1", "na_stress2", "pa_interested1", "pa_interested2", "pa_happy1", "pa_happy2", "na_sad1
-", "na_sad2")
-colnames(correlation_matrix) <- c("correlation")
+participants <- c(1, 3, 4, 5, 6, 7, 8)
+# initialize dataframe
+correlation_df <- data.frame(matrix(ncol = 4, nrow = length(emotion_columns)*length(participants)))
+# provide column names
+colnames(correlation_df) <- c('Participant', 'Emotion', 'OLKISA', 'Correlation')
+# fill columns with 
+correlation_df$Participant<-c(rep("1", 16), rep("3", 16), rep("4", 16), rep("5", 16), rep("6", 16), rep("7", 16), rep("8", 16))
+correlation_df$Emotion <-rep(c("pa_calm1", "pa_calm2", "pa_lively1", "pa_lively2", "na_nervous1", "na_nervous2", "na_weakend1", "na_weakened2", "na_stress1", "na_stress2", "pa_interested1", "pa_interested2", "pa_happy1", "pa_happy2", "na_sad1
+", "na_sad2"), length(participants))
+
+
+k=1
+# calculate correlation between OLKISA threshold and emotions for each participant
+for (i in 1:length(participants)) {
+    data_sub <- subset(data, data$Participant == participants[i])
+    for (j in 1:length(emotion_columns)){
+      correlation_df$Correlation[k] <- cor(data_sub[[emotion_columns[j]]], data_sub[40])
+      #correlation_matrix[i, 2] <- cor(data[[emotion_columns[i]]], data[49])
+      k=k+1
+    }
+}
+
+# create individual plots for each emotion 
+for (i in 1:length(emotion_columns)){
+  cor_sub <- subset(correlation_df, correlation_df$Emotion==correlation_df$Emotion[i])
+  barplot <- ggplot(cor_sub, aes(x = Participant, y = Correlation, fill = Correlation)) +
+  geom_bar(stat = "identity") +
+  scale_fill_gradient2(low = "red", high = "blue", mid = "white", midpoint = 0,
+                       limit = c(-1, 1), space = "Lab", 
+                       name = "Correlation") +
+  theme_minimal() +
+  ggtitle(paste("Correlation between", correlation_df$Emotion[i], "and OLKISA_Threshold")) +
+  xlab("Participant") +
+  ylab("Correlation") +
+  geom_text(aes(label = round(Correlation, 2)), vjust = -0.5)
+  ggsave(paste("Cor_", correlation_df$Emotion[i], ".png"), plot = barplot, width = 8, height = 12, units = "in", dpi = 300)
+}
 
 
 
-# calculate correlation between threshold and emotions
-for (i in 1:length(emotion_columns)) {
-    correlation_matrix[i, 1] <- cor(data[[emotion_columns[i]]], data[40])
-  }
-# Convert matrix to data frame
-correlation_df <- as.data.frame(correlation_matrix)
-# Add row names as a column
-correlation_df <- correlation_df %>%
-  rownames_to_column(var = "Emotion")
 
 
-# Plot the results
+# Create the combined bar plot with facets
 
-# Create the barplot
-barplot <- ggplot(correlation_df, aes(x = Emotion, y = correlation, fill = correlation)) +
+combined_barplot <- ggplot(correlation_df, aes(x = Participant, y = Correlation, fill = Correlation)) +
   geom_bar(stat = "identity") +
   scale_fill_gradient2(low = "red", high = "blue", mid = "white", midpoint = 0,
                        limit = c(-1, 1), space = "Lab", 
                        name = "Correlation") +
   theme_minimal() +
   ggtitle("Correlation between Emotions and OLKISA_Threshold") +
-  xlab("Emotion") +
+  xlab("Participant") +
   ylab("Correlation") +
-  geom_text(aes(label = round(correlation, 2)), vjust = -0.5)
+  geom_text(aes(label = round(Correlation, 2)), vjust = -0.5) +
+  facet_wrap(~ Emotion, scales = "free_x")
 
-# Create the heatmap
-heatmap <- ggplot(correlation_df, aes(x = Emotion, y = "Threshold", fill = correlation)) +
-  geom_tile(color = "white") +
-  scale_fill_gradient2(low = "red", high = "blue", mid = "white", midpoint = 0,
-                       limit = c(-1, 1), space = "Lab", 
-                       name = "Correlation") +
-  theme_minimal() +
-  ggtitle("Correlation Heatmap between Emotions and Threshold") +
-  xlab("Emotion") +
-  ylab("Threshold")
-
-# Combine the plots
-combined_plot <- plot_grid(barplot, heatmap, ncol = 1)
-
-ggsave("combined_correlation_plots.png", plot = combined_plot, width = 8, height = 12, units = "in", dpi = 300)
+ggsave("combined_plot_cor_allEmotions.png", plot = combined_barplot, width = 16, height = 12, units = "in", dpi = 300)
